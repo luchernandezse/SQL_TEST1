@@ -1,0 +1,63 @@
+CREATE TABLE public.company (
+    id INTEGER PRIMARY KEY NOT NULL,
+    name VARCHAR (50),
+    associated_partner VARCHAR (50),
+    close_date DATE
+);
+CREATE TABLE public.conversation (
+    
+    account_id INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    date DATE,
+    succesfull BOOLEAN,
+    id INTEGER 
+);
+-- insert
+INSERT INTO public.company(id,name,associated_partner,close_date) VALUES(1,'1','Vans','2023-10-26');
+INSERT INTO public.company(id,name,associated_partner,close_date) VALUES(2,'2','Vans2','2023-10-01');
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(1,100,'2023-10-26',true,1);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(2,100,'2023-10-28',true,1);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(3,100,'2023-10-29',true,1);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(4,155,'2023-10-30',true,1);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(5,100,'2023-10-31',true,1);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(6,100,'2023-10-2',true,2);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(7,150,'2023-10-3',false,2);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(8,150,'2023-10-4',false,2);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(9,50,'2023-10-5',false,2);
+INSERT INTO public.conversation(account_id,total,date,succesfull,id) VALUES(10,50,'2023-10-6',false,2);
+
+SELECT * FROM public.company;
+SELECT * FROM public.conversation;
+WITH cte AS (
+  SELECT company.id, conversation.date, conversation.total
+  FROM public.company
+  INNER JOIN public.conversation ON company.id = conversation.id
+  ORDER BY company.id ASC, conversation.date ASC
+),
+CumulativeSum AS (
+  SELECT
+    cte.id,
+    cte.date,
+    cte.total,
+    SUM(cte.total) OVER (
+      PARTITION BY cte.id
+      ORDER BY cte.date
+      ROWS BETWEEN 3 PRECEDING AND CURRENT ROW
+    ) AS cumulative_total
+  FROM cte
+),
+WithDateDiff AS (
+  SELECT
+    id,
+    date,
+    total,
+    cumulative_total,
+    LAG(date, 1) OVER (PARTITION BY id ORDER BY date) = date - INTERVAL '1 day' AS one_day_difference
+  FROM CumulativeSum
+)
+--SELECT id, date, cumulative_total, one_day_difference
+--FROM WithDateDiff;
+SELECT id, MIN(date) AS lowest_date
+FROM WithDateDiff
+WHERE cumulative_total >= 350 AND one_day_difference = true
+GROUP BY id;
